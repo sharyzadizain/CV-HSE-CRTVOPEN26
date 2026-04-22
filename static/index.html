@@ -22,6 +22,12 @@
       <section class="control-strip" aria-label="Camera controls">
         <button id="startButton" type="button">Start</button>
         <button id="stopButton" type="button" class="secondary" disabled>Stop</button>
+        <button id="flipButton" type="button" class="secondary icon-button" aria-label="Flip camera" title="Flip camera" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.5 7.5h6.1l-1.8-1.8L12.2 4 17 8.8l-4.8 4.8-1.4-1.7 1.8-1.8H6.5a3.5 3.5 0 0 0 0 7h.7v2h-.7a5.5 5.5 0 1 1 0-11Z" />
+            <path d="M17.5 16.5h-6.1l1.8 1.8-1.4 1.7L7 15.2l4.8-4.8 1.4 1.7-1.8 1.8h6.1a3.5 3.5 0 0 0 0-7h-.7v-2h.7a5.5 5.5 0 1 1 0 11Z" />
+          </svg>
+        </button>
         <div class="metric"><span>FPS</span><strong id="fpsValue">0</strong></div>
         <div class="metric"><span>Inference</span><strong id="latencyValue">0 ms</strong></div>
         <div class="metric"><span>Objects</span><strong id="countValue">0</strong></div>
