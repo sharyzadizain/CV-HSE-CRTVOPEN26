@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebRTC YOLO Camera</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">CPU OpenCV + YOLO</p>
+          <h1>WebRTC Camera</h1>
+        </div>
+        <div class="status" aria-live="polite">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="connectionState">idle</span>
+        </div>
+      </header>
+
+      <section class="control-strip" aria-label="Camera controls">
+        <button id="startButton" type="button">Start</button>
+        <button id="stopButton" type="button" class="secondary" disabled>Stop</button>
+        <div class="metric"><span>FPS</span><strong id="fpsValue">0</strong></div>
+        <div class="metric"><span>Inference</span><strong id="latencyValue">0 ms</strong></div>
+        <div class="metric"><span>Objects</span><strong id="countValue">0</strong></div>
+      </section>
+
+      <section class="video-output" aria-label="YOLO video output">
+        <article class="video-panel primary">
+          <div class="panel-head">
+            <h2>YOLO output</h2>
+            <span>real-time server annotated stream</span>
+          </div>
+          <video id="remoteVideo" autoplay playsinline muted></video>
+        </article>
+      </section>
+
+      <section class="detections-panel" aria-label="Live detections">
+        <div class="panel-head">
+          <h2>Live detections</h2>
+          <span id="frameValue">frame 0</span>
+        </div>
+        <ol id="detectionsList" class="detections-list">
+          <li class="empty">No detections yet</li>
+        </ol>
+      </section>
+    </main>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

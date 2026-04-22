@@ -1,0 +1,2 @@
+"""WebRTC YOLO camera application."""
+

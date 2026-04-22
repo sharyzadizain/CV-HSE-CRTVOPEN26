@@ -1,0 +1,16 @@
+services:
+  webrtc-yolo:
+    build: .
+    image: webrtc-yolo-camera:latest
+    network_mode: host
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      MODEL_PATH: /app/yolov8n.pt
+      YOLO_CONF: 0.35
+      YOLO_IMGSZ: 640
+      DETECT_EVERY_N: 1
+      PRELOAD_MODEL: "false"
+      MPLCONFIGDIR: /tmp/matplotlib
+      YOLO_CONFIG_DIR: /tmp/ultralytics
+    restart: unless-stopped

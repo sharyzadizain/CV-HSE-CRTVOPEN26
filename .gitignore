@@ -1,0 +1,10 @@
+!.gitignore
+!.dockerignore
+!Dockerfile
+!docker-compose.yml
+!docker-compose.*.yml
+!compose.yml
+!compose.*.yml
+
+.venv
+.pytest_cache
