@@ -96,24 +96,38 @@ async function flipCamera() {
   isFlippingCamera = true;
   setControls(true);
 
+  const previousFacingMode = currentFacingMode;
+  const previousDeviceId = currentDeviceId;
+  const nextFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+  let releasedCurrentCamera = false;
   let nextStream = null;
   try {
-    const nextFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    nextStream = await getReplacementCameraStream(oldTrack, nextFacingMode);
+    try {
+      nextStream = await getReplacementCameraStream(oldTrack, nextFacingMode);
+    } catch (error) {
+      if (!canRetryWithReleasedCamera(error, releasedCurrentCamera)) {
+        throw error;
+      }
+      oldTrack.stop();
+      releasedCurrentCamera = true;
+      nextStream = await getReplacementCameraStream(oldTrack, nextFacingMode);
+    }
+
     const nextTrack = nextStream.getVideoTracks()[0];
     if (!nextTrack) {
       throw new Error("No video track returned by the camera");
     }
 
     await sender.replaceTrack(nextTrack);
-    localStream.removeTrack(oldTrack);
-    oldTrack.stop();
-    localStream.addTrack(nextTrack);
+    replaceLocalVideoTrack(oldTrack, nextTrack, { stopOldTrack: !releasedCurrentCamera });
     rememberCamera(nextTrack, nextFacingMode);
     nextStream = null;
   } catch (error) {
     if (nextStream) {
       nextStream.getTracks().forEach((track) => track.stop());
+    }
+    if (releasedCurrentCamera) {
+      await restoreCamera(sender, oldTrack, previousFacingMode, previousDeviceId);
     }
     console.error(error);
     alert(`Could not flip camera: ${error.message}`);
@@ -167,6 +181,8 @@ function getVideoConstraints({ facingMode, exactFacingMode, deviceId } = {}) {
 }
 
 async function getReplacementCameraStream(oldTrack, nextFacingMode) {
+  const oldDeviceId = oldTrack.getSettings?.().deviceId || currentDeviceId;
+
   try {
     const stream = await getCameraStream({ facingMode: nextFacingMode });
     if (!isSameCamera(oldTrack, stream.getVideoTracks()[0])) {
@@ -177,14 +193,14 @@ async function getReplacementCameraStream(oldTrack, nextFacingMode) {
     // Device enumeration below covers browsers that do not honor facingMode consistently.
   }
 
-  const nextDeviceId = await getNextCameraDeviceId(oldTrack);
+  const nextDeviceId = await getNextCameraDeviceId(oldDeviceId);
   if (!nextDeviceId) {
     throw new Error("No alternate camera found");
   }
   return getCameraStream({ deviceId: nextDeviceId });
 }
 
-async function getNextCameraDeviceId(oldTrack) {
+async function getNextCameraDeviceId(oldDeviceId) {
   if (!navigator.mediaDevices?.enumerateDevices) {
     return null;
   }
@@ -196,7 +212,6 @@ async function getNextCameraDeviceId(oldTrack) {
     return null;
   }
 
-  const oldDeviceId = oldTrack.getSettings?.().deviceId || currentDeviceId;
   const currentIndex = cameras.findIndex((camera) => camera.deviceId === oldDeviceId);
   const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % cameras.length : 0;
   return cameras[nextIndex].deviceId;
@@ -210,6 +225,55 @@ function isSameCamera(oldTrack, newTrack) {
   const oldDeviceId = oldTrack.getSettings?.().deviceId;
   const newDeviceId = newTrack.getSettings?.().deviceId;
   return Boolean(oldDeviceId && newDeviceId && oldDeviceId === newDeviceId);
+}
+
+function replaceLocalVideoTrack(oldTrack, nextTrack, { stopOldTrack = true } = {}) {
+  if (!localStream) {
+    if (stopOldTrack) {
+      oldTrack.stop();
+    }
+    nextTrack.stop();
+    return;
+  }
+
+  localStream.removeTrack(oldTrack);
+  if (stopOldTrack) {
+    oldTrack.stop();
+  }
+  localStream.addTrack(nextTrack);
+}
+
+async function restoreCamera(sender, oldTrack, previousFacingMode, previousDeviceId) {
+  let restoreStream = null;
+  try {
+    restoreStream = await getCameraStream({
+      deviceId: previousDeviceId,
+      facingMode: previousFacingMode,
+      exactFacingMode: false,
+    });
+    const restoreTrack = restoreStream.getVideoTracks()[0];
+    if (!restoreTrack) {
+      throw new Error("No video track returned by the previous camera");
+    }
+
+    await sender.replaceTrack(restoreTrack);
+    replaceLocalVideoTrack(oldTrack, restoreTrack, { stopOldTrack: false });
+    rememberCamera(restoreTrack, previousFacingMode);
+    restoreStream = null;
+  } catch (restoreError) {
+    if (restoreStream) {
+      restoreStream.getTracks().forEach((track) => track.stop());
+    }
+    console.error("Could not restore previous camera", restoreError);
+    localStream?.removeTrack(oldTrack);
+  }
+}
+
+function canRetryWithReleasedCamera(error, alreadyReleased) {
+  if (alreadyReleased || error?.name === "NotAllowedError") {
+    return false;
+  }
+  return true;
 }
 
 function rememberCamera(track, fallbackFacingMode = currentFacingMode) {
